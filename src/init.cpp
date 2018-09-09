@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <memory>
+#include <functional>
+
 #include <lua.hpp>
 
 #include "lua_manager.cpp"
@@ -20,6 +23,35 @@
      - Singal handler
      - Util classes for Write/Read files
  */
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+
+#define BBLK "\x1B[40m"
+#define BRED "\x1B[41m"
+
+/*
+40 Black
+41 Red
+42 Green
+43 Yellow
+44 Blue
+45 Magenta
+46 Cyan
+47 White
+*/
+
+void Test()
+{
+    printf("\033[37;41mHello World\033[0m\n");
+    printf(KNRM);
+}
 
 bool WriteFile(const char* filename, const char* str)
 {
@@ -38,7 +70,7 @@ bool WriteFile(const char* filename, const char* str)
 
 typedef struct stat Stat;
 
-char* ReadFile(const char* filename)
+std::string ReadFile(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
     if(fd == -1)
@@ -50,13 +82,13 @@ char* ReadFile(const char* filename)
     Stat st;
     fstat(fd, &st);
     int length = st.st_size;
+    
+    std::string result(length, 0);
 
-    char* result = (char*)malloc(length);
-
-    read(fd, result, length);
+    read(fd, &result[0], length);
     close(fd);
     
-    return result;
+    return std::move(result);
 }
 
 bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
@@ -99,7 +131,7 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
     return true;
 }
 
-void catch_function(int signo)
+static void catch_function(int signo)
 {
     if(signo == SIGUSR1)
     {
@@ -122,25 +154,36 @@ void catch_function(int signo)
 
 int main(int argc, char** argv)
 {
-    if (signal(SIGUSR1, catch_function) == SIG_ERR)
+    const std::function<void(int)> test = &catch_function;
+    
+    //TODO(patrik): Change these signal functions
+    typedef void funcTest(int);
+    funcTest* const* func = test.target<void(*)(int)>();
+    if(func == nullptr)
+    {
+        printf("Function pointer is null\n");
+    }
+    
+    if (signal(SIGUSR1, *func) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
+    
+    if (signal(SIGUSR2, *func) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
     }
 
-    //SIGUSR1, SIGUSR2, SIGTERM
-    if (signal(SIGUSR2, catch_function) == SIG_ERR)
+    if (signal(SIGTERM, *func) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
     }
 
-    if (signal(SIGTERM, catch_function) == SIG_ERR)
-    {
-        fputs("An error occurred while setting a signal handler.\n", stderr);
-        return EXIT_FAILURE;
-    }
-
+    Test();
+    
     mount("/proc", "/proc", "proc",     0, 0);
     mount("/sys",  "/sys",  "sysfs",    0, 0);
     mount("/dev",  "/dev",  "devtmpfs", 0, 0);
@@ -156,15 +199,11 @@ int main(int argc, char** argv)
     
     printf("NOTE: Initalization done\n");
 
-    char* configFile = ReadFile("/etc/init.conf.lua");
-    
-    LuaManager* luaManager = new LuaManager();
-    luaManager->SetGlobal<lua_Number>("test", 123);
-    luaManager->RunScript(configFile);
-    
-    delete luaManager;
+    std::string configFile = ReadFile("/etc/init.conf.lua");
 
-    free(configFile);
+    std::unique_ptr<LuaManager> luaManager = std::make_unique<LuaManager>();
+    luaManager->SetGlobal<std::string>("test", "Hello World");
+    luaManager->RunScript(configFile);
     
     pid_t id = 0;
     char* args[] = { "login", NULL };

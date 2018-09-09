@@ -36,3 +36,10 @@ void LuaManager::SetGlobal<lua_Number>(const std::string& name, lua_Number value
     lua_pushnumber(m_State, value);
     lua_setglobal(m_State, name.c_str());
 }
+
+template<>
+void LuaManager::SetGlobal<std::string>(const std::string& name, std::string value)
+{
+    lua_pushstring(m_State, value.c_str());
+    lua_setglobal(m_State, name.c_str());
+}
