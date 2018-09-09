@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -15,6 +14,12 @@
 #include <lua.hpp>
 
 #include "lua_manager.cpp"
+
+/* TODO(patrik):
+     - Handle all power/reboot/halt signals
+     - Singal handler
+     - Util classes for Write/Read files
+ */
 
 bool WriteFile(const char* filename, const char* str)
 {
@@ -54,22 +59,6 @@ char* ReadFile(const char* filename)
     return result;
 }
 
-#define WARN_ONLY (1<<31)
-
-int xcreate_stdio(char *path, int flags, int mode)
-{
-    int fd = open(path, (flags^O_CLOEXEC)&~WARN_ONLY, mode);
-
-    //if (fd == -1) ((mode&WARN_ONLY) ? perror_msg_raw : perror_exit_raw)(path);
-    return fd;
-}
-
-// Die unless we can open a file, returning file descriptor.
-int xopen_stdio(char *path, int flags)
-{
-    return xcreate_stdio(path, flags, 0);
-}
-
 bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
 {   
     pid_t processID = fork();
@@ -84,11 +73,14 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
     if(processID == 0)
     {
         setsid();
-        for(int i = 0; i < 3; i++)
-        {
-            close(i);
-            xopen_stdio("/dev/ttyS0", O_RDWR | O_CLOEXEC);        
-        }
+
+        close(0);
+        close(1);
+        close(2);
+
+        open("/dev/ttyS0", O_RDONLY, 0);
+        open("/dev/ttyS0", O_WRONLY, 0);
+        open("/dev/ttyS0", O_WRONLY, 0);
         
         //NOTE: Change the process code
         int result = execv(command, args);
@@ -107,8 +99,48 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
     return true;
 }
 
+void catch_function(int signo)
+{
+    if(signo == SIGUSR1)
+    {
+        //NOTE(patrik): Halt
+        printf("Got Signal SIGUSR1\n");
+    }
+    else if(signo == SIGUSR2)
+    {
+        //NOTE(patrik): Poweroff
+        printf("Got Signal SIGUSR2\n");
+    }
+    else if(signo == SIGTERM)
+    {
+        //NOTE(patrik): Reboot
+        printf("Got Signal SIGTERM\n");
+    }
+
+    // reboot(RB_POWER_OFF);
+}
+
 int main(int argc, char** argv)
 {
+    if (signal(SIGUSR1, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    //SIGUSR1, SIGUSR2, SIGTERM
+    if (signal(SIGUSR2, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
+
+    if (signal(SIGTERM, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        return EXIT_FAILURE;
+    }
+
     mount("/proc", "/proc", "proc",     0, 0);
     mount("/sys",  "/sys",  "sysfs",    0, 0);
     mount("/dev",  "/dev",  "devtmpfs", 0, 0);
