@@ -71,7 +71,7 @@ void Test()
 bool WriteFile(const char* filename, const char* str)
 {
 	int fd = open(filename, O_WRONLY | O_CREAT);
-    if(fd == -1)
+    if(!Log::SystemCheck(fd, "open"))
     {
         return false;
     }
@@ -88,10 +88,10 @@ typedef struct stat Stat;
 std::string ReadFile(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
-    if(fd == -1)
-    {
-        //TODO: Write some errors
-        return 0;
+   
+    if(!Log::SystemCheck(fd, "open"))
+    {        
+        return std::string();
     }
 
     Stat st;
@@ -109,12 +109,9 @@ std::string ReadFile(const char* filename)
 bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
 {   
     pid_t processID = fork();
-    if(processID == -1)
+    if(!Log::SystemCheck(processID, "fork"))
     {
-        char* errorStr = strerror(errno);
-        
-        printf("Error with forking a process: %s\nError: %s\n", command, errorStr);
-    	return false;
+        return false;
     }
     
     if(processID == 0)
@@ -151,17 +148,17 @@ static void catch_function(int signo)
     if(signo == SIGUSR1)
     {
         //NOTE(patrik): Halt
-        printf("Got Signal SIGUSR1\n");
+        Log::Info("Got Signal SIGUSR1");
     }
     else if(signo == SIGUSR2)
     {
         //NOTE(patrik): Poweroff
-        printf("Got Signal SIGUSR2\n");
+        Log::Info("Got Signal SIGUSR2");
     }
     else if(signo == SIGTERM)
     {
         //NOTE(patrik): Reboot
-        printf("Got Signal SIGTERM\n");
+        Log::Info("Got Signal SIGTERM");
     }
 
     // reboot(RB_POWER_OFF);
@@ -179,19 +176,19 @@ int main(int argc, char** argv)
         printf("Function pointer is null\n");
     }
     
-    if (signal(SIGUSR1, *func) == SIG_ERR)
+    if(signal(SIGUSR1, *func) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
     }
     
-    if (signal(SIGUSR2, *func) == SIG_ERR)
+    if(signal(SIGUSR2, *func) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
     }
 
-    if (signal(SIGTERM, *func) == SIG_ERR)
+    if(signal(SIGTERM, *func) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
@@ -226,7 +223,7 @@ int main(int argc, char** argv)
     int status = 0;
 start:
 	result = ExecuteCommand("/bin/busybox", args, &id);
-    if(result == false)
+    if(!result)
         return -1;
 
     do

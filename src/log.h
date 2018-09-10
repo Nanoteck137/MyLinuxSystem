@@ -19,4 +19,7 @@ public:
     static void Warning(const char* format, ...);
     static void Error(const char* format, ...);
     static void Fatal(const char* format, ...);
+
+    //TODO(patrik): Need a better check for system calls
+    static bool SystemCheck(int result, const char* cause);
 };
