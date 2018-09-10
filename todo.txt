@@ -1,0 +1,6 @@
+Config Files:
+	- Copy files to right directory in root
+
+create.sh:
+	- Automate download of Busybox and compile it
+	- Automate download of Bash and compile it
