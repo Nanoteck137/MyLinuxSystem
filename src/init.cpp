@@ -17,6 +17,7 @@
 #include <lua.hpp>
 
 #include "lua_manager.cpp"
+#include "log.cpp"
 
 /* TODO(patrik):
      - Handle all power/reboot/halt signals
@@ -50,7 +51,21 @@
 void Test()
 {
     printf("\033[37;41mHello World\033[0m\n");
-    printf(KNRM);
+    Log::Info("Hello World");
+    Log::Info("Hello World22");
+    Log::Info("Hello");
+
+    Log::Warning("Hello World");
+    Log::Warning("Hello World22");
+    Log::Warning("Hello");
+
+    Log::Error("Hello World");
+    Log::Error("Hello World22");
+    Log::Error("Hello");
+
+    Log::Fatal("Hello World");
+    Log::Fatal("Hello World22");
+    Log::Fatal("Hello");
 }
 
 bool WriteFile(const char* filename, const char* str)
@@ -113,7 +128,7 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
         open("/dev/ttyS0", O_RDONLY, 0);
         open("/dev/ttyS0", O_WRONLY, 0);
         open("/dev/ttyS0", O_WRONLY, 0);
-        
+
         //NOTE: Change the process code
         int result = execv(command, args);
         if(result == -1)
