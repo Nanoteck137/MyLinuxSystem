@@ -1,4 +1,4 @@
 #!/bin/bash
 
-cd root
+cd ../root
 find . | cpio -o -H newc | gzip > ../root.cpio.gz
