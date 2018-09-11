@@ -7,11 +7,11 @@ cd .. &&
 cd src &&
 make &&
 sudo cp ./init ../root &&
-cd ..
+cd .. &&
 
 cd scripts &&
 
-./pack_root.sh
+./pack_root.sh &&
 
 cd .. &&
 
