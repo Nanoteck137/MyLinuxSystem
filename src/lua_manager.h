@@ -1,10 +1,5 @@
 #pragma once
 
-#include <string>
-#include <assert.h>
-
-#include <lua.hpp>
-
 /*
   TODO(patrik):
     - GetGlobal/SetGlobal
@@ -23,23 +18,5 @@ public:
 
     void RunScript(const std::string& script);
     
-    template<typename T>
-    void SetGlobal(const std::string& name, T value)
-    {
-        assert(false);
-    }
+    void SetGlobal(const std::string& name, LuaValue* value);
 };
-
-template<>
-void LuaManager::SetGlobal<lua_Number>(const std::string& name, lua_Number value)
-{
-    lua_pushnumber(m_State, value);
-    lua_setglobal(m_State, name.c_str());
-}
-
-template<>
-void LuaManager::SetGlobal<std::string>(const std::string& name, std::string value)
-{
-    lua_pushstring(m_State, value.c_str());
-    lua_setglobal(m_State, name.c_str());
-}

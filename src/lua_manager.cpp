@@ -18,3 +18,9 @@ void LuaManager::RunScript(const std::string& script)
 {
     luaL_dostring(m_State, script.c_str());
 }
+
+void LuaManager::SetGlobal(const std::string& name, LuaValue* value)
+{
+    value->Push(m_State);
+    lua_setglobal(m_State, name.c_str());
+}

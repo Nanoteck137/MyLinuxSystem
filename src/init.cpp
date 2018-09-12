@@ -16,8 +16,10 @@
 
 #include <lua.hpp>
 
-#include "lua_manager.cpp"
 #include "log.cpp"
+
+#include "lua_value.cpp"
+#include "lua_manager.cpp"
 
 /* TODO(patrik):
      - Handle all power/reboot/halt signals
@@ -214,7 +216,10 @@ int main(int argc, char** argv)
     std::string configFile = ReadFile("/etc/init.conf.lua");
 
     std::unique_ptr<LuaManager> luaManager = std::make_unique<LuaManager>();
-    luaManager->SetGlobal<std::string>("test", "Hello World");
+    LuaValue* value = LuaValue::From(321.32f);
+    
+    luaManager->SetGlobal("test", value);
+    
     luaManager->RunScript(configFile);
     
     pid_t id = 0;
