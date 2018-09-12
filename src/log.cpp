@@ -50,17 +50,3 @@ void Log::Fatal(const char* format, ...)
 
     printf("[Fatal]: %s\n", s_Buffer);
 }
-
-//TODO(patrik): Need a better check for system calls
-bool Log::SystemCheck(int result, const char* cause)
-{
-    if(result == -1)
-    {
-        //NOTE(patrik): Error
-        char* strError = strerror(errno);
-        Error("System Call Error: %s - %s", cause, strError);
-        return false;
-    }
-
-    return true;
-}

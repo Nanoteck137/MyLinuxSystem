@@ -27,54 +27,19 @@
      - Util classes for Write/Read files
  */
 
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
-
-#define BBLK "\x1B[40m"
-#define BRED "\x1B[41m"
-
-/*
-40 Black
-41 Red
-42 Green
-43 Yellow
-44 Blue
-45 Magenta
-46 Cyan
-47 White
-*/
-
-void Test()
+char* GetSystemError()
 {
-    printf("\033[37;41mHello World\033[0m\n");
-    Log::Info("Hello World");
-    Log::Info("Hello World22");
-    Log::Info("Hello");
-
-    Log::Warning("Hello World");
-    Log::Warning("Hello World22");
-    Log::Warning("Hello");
-
-    Log::Error("Hello World");
-    Log::Error("Hello World22");
-    Log::Error("Hello");
-
-    Log::Fatal("Hello World");
-    Log::Fatal("Hello World22");
-    Log::Fatal("Hello");
+    char* strError = strerror(errno);
+    
+    return strError;
 }
 
 bool WriteFile(const char* filename, const char* str)
 {
 	int fd = open(filename, O_WRONLY | O_CREAT);
-    if(!Log::SystemCheck(fd, "open"))
+    if(fd == -1)
     {
+        Log::Error("Could not open '%s' for writing - Error: %s", filename, GetSystemError());
         return false;
     }
             
@@ -90,12 +55,13 @@ typedef struct stat Stat;
 std::string ReadFile(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
-   
-    if(!Log::SystemCheck(fd, "open"))
-    {        
+
+    if(fd == -1)
+    {
+        Log::Error("Could not open '%s' for reading - Error: %s", filename, GetSystemError());
         return std::string();
     }
-
+    
     Stat st;
     fstat(fd, &st);
     int length = st.st_size;
@@ -111,8 +77,9 @@ std::string ReadFile(const char* filename)
 bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
 {   
     pid_t processID = fork();
-    if(!Log::SystemCheck(processID, "fork"))
+    if(processID == -1)
     {
+        Log::Error("Could not fork process - Command: %s'", command);
         return false;
     }
     
@@ -195,8 +162,6 @@ int main(int argc, char** argv)
         fputs("An error occurred while setting a signal handler.\n", stderr);
         return EXIT_FAILURE;
     }
-
-    Test();
     
     mount("/proc", "/proc", "proc",     0, 0);
     mount("/sys",  "/sys",  "sysfs",    0, 0);
