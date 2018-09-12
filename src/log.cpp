@@ -2,51 +2,42 @@
 
 char Log::s_Buffer[PRINT_BUFFER_SIZE];
 
-
-void Log::Info(const char* format, ...)
+void Log::InternalPrint(const char* file, int line, LogType type, const char* format, va_list args)
 {
-    va_list args;
-    va_start(args, format);
-
     vsnprintf(s_Buffer, PRINT_BUFFER_SIZE, format, args);
-        
-    va_end(args);
 
-    printf("[Info]: %s\n", s_Buffer);
+    switch(type)
+    {
+        case LogType::INFO:    printf("[Info] "); break;
+        case LogType::WARNING: printf("[Warning] "); break;
+        case LogType::ERROR:   printf("[Error] "); break;
+        case LogType::FATAL:   printf("[Fatal] "); break;
+    }
+
+    if(file)
+    {
+        printf("(%s:%d) ", file, line);
+    }
+    
+    printf(": %s\n", s_Buffer);
 }
 
-void Log::Warning(const char* format, ...)
+void Log::Print(const char* file, int line, LogType type, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    vsnprintf(s_Buffer, PRINT_BUFFER_SIZE, format, args);
-        
+    InternalPrint(file, line, type, format, args);
+    
     va_end(args);
-
-    printf("[Warning]: %s\n", s_Buffer);
 }
 
-void Log::Error(const char* format, ...)
+void Log::Print(LogType type, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    vsnprintf(s_Buffer, PRINT_BUFFER_SIZE, format, args);
-        
+    InternalPrint(nullptr, 0, type, format, args);
+    
     va_end(args);
-
-    printf("[Error]: %s\n", s_Buffer);
-}
-
-void Log::Fatal(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-
-    vsnprintf(s_Buffer, PRINT_BUFFER_SIZE, format, args);
-        
-    va_end(args);
-
-    printf("[Fatal]: %s\n", s_Buffer);
 }

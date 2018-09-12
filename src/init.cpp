@@ -39,7 +39,7 @@ bool WriteFile(const char* filename, const char* str)
 	int fd = open(filename, O_WRONLY | O_CREAT);
     if(fd == -1)
     {
-        Log::Error("Could not open '%s' for writing - Error: %s", filename, GetSystemError());
+        LogError("Could not open '%s' for writing - Error: %s", filename, GetSystemError());
         return false;
     }
             
@@ -58,7 +58,7 @@ std::string ReadFile(const char* filename)
 
     if(fd == -1)
     {
-        Log::Error("Could not open '%s' for reading - Error: %s", filename, GetSystemError());
+        LogError("Could not open '%s' for reading - Error: %s", filename, GetSystemError());
         return std::string();
     }
     
@@ -79,7 +79,7 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
     pid_t processID = fork();
     if(processID == -1)
     {
-        Log::Error("Could not fork process - Command: %s'", command);
+        LogError("Could not fork process - Command: %s'", command);
         return false;
     }
     
@@ -112,57 +112,54 @@ bool ExecuteCommand(const char* command, char* args[], pid_t* childID)
     return true;
 }
 
-static void catch_function(int signo)
+static void HandlePowerSignals(int signalID)
 {
-    if(signo == SIGUSR1)
+    if(signalID == SIGUSR1)
     {
         //NOTE(patrik): Halt
-        Log::Info("Got Signal SIGUSR1");
+        LogInfo("Got Signal SIGUSR1");
     }
-    else if(signo == SIGUSR2)
+    else if(signalID == SIGUSR2)
     {
         //NOTE(patrik): Poweroff
-        Log::Info("Got Signal SIGUSR2");
+        LogInfo("Got Signal SIGUSR2");
     }
-    else if(signo == SIGTERM)
+    else if(signalID == SIGTERM)
     {
         //NOTE(patrik): Reboot
-        Log::Info("Got Signal SIGTERM");
+        LogInfo("Got Signal SIGTERM");
     }
 
     // reboot(RB_POWER_OFF);
 }
 
-int main(int argc, char** argv)
+typedef void SignalFunction(int);
+
+bool RegisterSignal(int signalID, const std::function<void(int)>& function)
 {
-    const std::function<void(int)> test = &catch_function;
-    
-    //TODO(patrik): Change these signal functions
-    typedef void funcTest(int);
-    funcTest* const* func = test.target<void(*)(int)>();
-    if(func == nullptr)
+    SignalFunction* const* funcPtr = function.target<void(*)(int)>();
+    if(funcPtr == nullptr)
     {
-        printf("Function pointer is null\n");
+        LogError("Could not get function pointer from std::function from '%s'", strsignal(signalID));
+        return false;
     }
     
-    if(signal(SIGUSR1, *func) == SIG_ERR)
+    if(signal(signalID, *funcPtr) == SIG_ERR)
     {
-        fputs("An error occurred while setting a signal handler.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    
-    if(signal(SIGUSR2, *func) == SIG_ERR)
-    {
-        fputs("An error occurred while setting a signal handler.\n", stderr);
-        return EXIT_FAILURE;
+        LogError("Could not register singal '%s'", strsignal(signalID));
+        return false;
     }
 
-    if(signal(SIGTERM, *func) == SIG_ERR)
-    {
-        fputs("An error occurred while setting a signal handler.\n", stderr);
-        return EXIT_FAILURE;
-    }
-    
+    return true;
+}
+
+int main(int argc, char** argv)
+{   
+    RegisterSignal(SIGUSR1, HandlePowerSignals);
+    RegisterSignal(SIGUSR2, HandlePowerSignals);
+    RegisterSignal(SIGTERM, HandlePowerSignals);
+
+    //TODO(patrik): Move all these commands to a "System Manager"
     mount("/proc", "/proc", "proc",     0, 0);
     mount("/sys",  "/sys",  "sysfs",    0, 0);
     mount("/dev",  "/dev",  "devtmpfs", 0, 0);
@@ -175,8 +172,9 @@ int main(int argc, char** argv)
     system("ifconfig eth0 10.0.2.15");
     system("route add default gw 10.0.2.2");
     system("dmesg -n 1");
+    //END TODO
     
-    printf("NOTE: Initalization done\n");
+    LogInfo("NOTE: Initalization done\n");
 
     std::string configFile = ReadFile("/etc/init.conf.lua");
 

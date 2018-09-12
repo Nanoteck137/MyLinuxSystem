@@ -26,7 +26,7 @@ void LuaValue::Push(lua_State* state)
             break;
 
         default:
-            Log::Error("Trying to push unknown value: %d\n", m_Type);
+            LogError("Trying to push unknown value: %d\n", m_Type);
             break;
     }
 }
